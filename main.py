@@ -101,16 +101,26 @@ def get_status(_=Depends(verify_token)):
 
 @app.post("/set", tags=["Traffic Light"])
 async def set_color(body: SetColorRequest, _=Depends(verify_token)):
-    """Change the traffic light to a specified color."""
+    """Change the traffic light to a specified color (POST with JSON body)."""
     if body.color not in VALID_COLORS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid color '{body.color}'. Valid: {VALID_COLORS}",
-        )
+        raise HTTPException(status_code=400, detail=f"Invalid color '{body.color}'. Valid: {VALID_COLORS}")
     state["color"] = body.color
     state["updated_at"] = datetime.utcnow().isoformat()
     result = {"message": f"Light set to {body.color}", "current_color": body.color}
     log_request("POST", "/set", {"color": body.color}, result)
+    await broadcast_state()
+    return result
+
+
+@app.get("/set", tags=["Traffic Light"])
+async def set_color_get(color: str, _=Depends(verify_token)):
+    """Change the traffic light via GET + query param: /set?color=red"""
+    if color not in VALID_COLORS:
+        raise HTTPException(status_code=400, detail=f"Invalid color '{color}'. Valid: {VALID_COLORS}")
+    state["color"] = color
+    state["updated_at"] = datetime.utcnow().isoformat()
+    result = {"message": f"Light set to {color}", "current_color": color}
+    log_request("GET", f"/set?color={color}", {"color": color}, result)
     await broadcast_state()
     return result
 
